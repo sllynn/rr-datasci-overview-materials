@@ -1,0 +1,31 @@
+[
+    {
+  "pypi": {
+    "package": "fbprophet"
+  }
+},
+{
+  "whl": "dbfs:/FileStore/jars/4217d6b0_7ea4_4978_9ec7_14c65d250909/mmlspark-0.17-py2.py3-none-any.whl"
+},
+{
+  "maven": {
+    "coordinates": "com.microsoft.ml.spark:mmlspark_2.11:1.0.0-rc1",
+    "repo": "https://mmlspark.azureedge.net/maven"
+  }
+},
+{
+  "pypi": {
+    "package": "petastorm==0.7.2"
+  }
+},
+{
+  "pypi": {
+    "package": "joblibspark"
+  }
+},
+{
+  "pypi": {
+    "package": "scikit-learn==0.21.3"
+  }
+}
+]
