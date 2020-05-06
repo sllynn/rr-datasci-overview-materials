@@ -20,6 +20,7 @@ import numpy as np
 
 # DBTITLE 1,Read dataset into Spark DataFrame
 source_data_path = "/databricks-datasets/samples/lending_club/parquet"
+table_name = "lending_club.cleaned"
 df = spark.read.format("parquet").load(source_data_path)
 
 # COMMAND ----------
@@ -64,6 +65,17 @@ spark.sql("create database if not exists lending_club")
   .mode("overwrite")
   .saveAsTable(name="lending_club.cleaned", path="abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/cleaned")
 )
+
+# COMMAND ----------
+
+# DBTITLE 1,Delta table history
+table_history = spark.sql(f"describe history {table_name}")
+display(table_history)
+
+# COMMAND ----------
+
+latest_table_version = table_history.orderBy(desc("version")).limit(1).collect()[0].version
+latest_table_version
 
 # COMMAND ----------
 
@@ -132,19 +144,21 @@ def train(run_name, params, X_train, X_test, Y_train, Y_test):
     rf.fit(X_train, Y_train)
     predictions = rf.predict(X_test)
 
-    # Log model
-    mlflow.sklearn.log_model(rf, "random-forest-model")
-
     # Log params
     mlflow.log_params(params)
+    
+    # Add source data info
+    mlflow.set_tag("source_table", table_name)
+    mlflow.set_tag("source_table_history_version", latest_table_version)
     
     # Log metrics
     metrics = eval_metrics(rf, X_test, Y_test)
     mlflow.log_metrics(metrics)
+
+    # Log model
+    mlflow.sklearn.log_model(rf, "random-forest-model")
     
-    # Add source data info
-    mlflow.set_tag("source_data_path", source_data_path)
-    
+    # log some other artifacts
     importance = pd.DataFrame(list(zip(df.columns, rf.feature_importances_)), 
                                 columns=["Feature", "Importance"]
                               ).sort_values("Importance", ascending=False)
@@ -152,10 +166,9 @@ def train(run_name, params, X_train, X_test, Y_train, Y_test):
     csvPath = "/tmp/feature-importance.csv"
     importance.to_csv(csvPath, index=False)
     
-    # Log importance
     mlflow.log_artifact(csvPath)
 
-    return run.info.run_uuid
+  return run.info.run_uuid
 
 # COMMAND ----------
 
@@ -215,7 +228,7 @@ display(runs)
 # COMMAND ----------
 
 # DBTITLE 1,Get only runs with ROC>0.7
-display(runs.where("metrics.roc>0.7").select("run_id",  "artifact_uri", "metrics.roc", "metrics.acc"))
+display(runs.where("metrics.roc>0.975").select("run_id",  "artifact_uri", "metrics.roc", "metrics.acc"))
 
 # COMMAND ----------
 

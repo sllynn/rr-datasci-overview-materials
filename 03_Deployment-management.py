@@ -24,11 +24,6 @@ from pyspark.sql.functions import *
 
 # COMMAND ----------
 
-mlflow.de
-mlflow.register_model(f"runs:/{best_run_id}/{model_name}", model_name)
-
-# COMMAND ----------
-
 # DBTITLE 1,Read dataset into Spark DataFrame
 source_table = "lending_club.cleaned"
 df = spark.table(source_table)
@@ -76,7 +71,8 @@ best_run_id
 
 # DBTITLE 1,Retrieve model as scikit-learn model and score on Pandas DataFrame
 import mlflow.sklearn
-model = mlflow.sklearn.load_model(model_uri=f"runs:/{best_run_id}/random-forest-model")
+model_name = "random-forest-model"
+model = mlflow.sklearn.load_model(model_uri=f"runs:/{best_run_id}/{model_name}")
 model
 
 # COMMAND ----------
@@ -103,8 +99,7 @@ spark.createDataFrame(pdDf).createOrReplaceTempView("model_test")
 
 # DBTITLE 1,Retrieve model with mlflow.pyfunc.spark_udf and push into Spark pipeline
 import mlflow.pyfunc
-model_name = "random-forest-model"
-spark_model = mlflow.pyfunc.spark_udf(spark, model_uri=f"runs:/{best_run_id}/random-forest-model")
+spark_model = mlflow.pyfunc.spark_udf(spark, model_uri=f"runs:/{best_run_id}/{model_name}")
 spark_model
 
 # COMMAND ----------

@@ -1,5 +1,6 @@
 # Databricks notebook source
 from mlflow.tracking import MlflowClient
+client = MlflowClient()
 
 # COMMAND ----------
 
@@ -14,7 +15,6 @@ for mv in client.search_model_versions(f"name='{model_name}'"):
 
 # COMMAND ----------
 
-client = MlflowClient()
 experimentID = [e.experiment_id for e in client.list_experiments() if e.name==path][0]
 runs = spark.read.format("mlflow-experiment").load(experimentID)
 
@@ -28,3 +28,11 @@ for run in runs.collect():
 # dbutils.fs.cp("/databricks-datasets/samples/population-vs-price/data_geo.csv", "/stuart/demo/samples/population-vs-price/data_geo.csv")
 # dbutils.fs.cp("/databricks-datasets/samples/people/people.json", "/stuart/demo/samples/people/people.json")
 # dbutils.fs.cp("/databricks-datasets/samples/lending_club/parquet", "/stuart/demo/samples/lending_club/parquet", True)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC drop table if exists covid.timeseries;
+
+# COMMAND ----------
+
