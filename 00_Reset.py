@@ -33,6 +33,13 @@ for run in runs.collect():
 
 # MAGIC %sql
 # MAGIC drop table if exists covid.timeseries;
+# MAGIC drop table if exists lending_club.cleaned;
+# MAGIC drop table if exists lending_club.model_test;
+
+# COMMAND ----------
+
+dbutils.fs.rm("abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/cleaned", True)
+dbutils.fs.rm("abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/model_test", True)
 
 # COMMAND ----------
 

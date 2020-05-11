@@ -15,10 +15,7 @@
 # COMMAND ----------
 
 # DBTITLE 1,Read from .csv file (schema unknown)
-display(
-  spark.read
-  .csv("/stuart/demo/samples/population-vs-price/data_geo.csv", header=True, inferSchema=True)
-)
+display(spark.read.csv("/databricks-datasets/samples/population-vs-price/data_geo.csv", header=True, inferSchema=True))
 
 # COMMAND ----------
 
@@ -26,16 +23,19 @@ display(
 display(
   spark.read
   .schema("`2014 rank` int,`City` string,`State` string,`State Code` string,`2014 Population estimate` long,`2015 median sales price` float")
-  .csv("/stuart/demo/samples/population-vs-price/data_geo.csv", header=True)
+  .csv("/databricks-datasets/samples/population-vs-price/data_geo.csv", header=True)
 )
+
+# COMMAND ----------
+
+# MAGIC %fs head /stuart/demo/samples/people/people.json
 
 # COMMAND ----------
 
 # DBTITLE 1,Read a .json file (row per observation)
 display(
   spark.read
-  .schema("name string, age int")
-  .json("/stuart/demo/samples/people/people.json")
+  .json("/stuart/demo/samples/people/", multiLine=True)
 )
 
 # COMMAND ----------
@@ -61,6 +61,19 @@ display(
 display(
   spark.table("covid.timeseries")
 )
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select *
+# MAGIC from covid.timeseries
+# MAGIC where Country_Region = "UK"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Machine Learning workflow on Databricks
+# MAGIC ### A 'hello world' example
 
 # COMMAND ----------
 
@@ -122,6 +135,36 @@ print("Calculate the total amount of money earned or lost per loan...")
 df = df.withColumn('net', round( df.total_pymnt - df.loan_amnt, 2))
 
 display(df)
+
+# COMMAND ----------
+
+# DBTITLE 1,Save this cleaned dataframe as a new Delta table on ADLS and register in metastore
+df.createOrReplaceTempView("lending_club_cleaned")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC create database if not exists lending_club;
+# MAGIC use lending_club;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select *
+# MAGIC from lending_club_cleaned
+# MAGIC limit 5
+
+# COMMAND ----------
+
+(
+  df.write
+  .format("delta")
+  .mode("overwrite")
+  .partitionBy("issue_d")
+  .saveAsTable(name="lending_club.cleaned", path="abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/cleaned")
+)
+
+df = spark.table("lending_club.cleaned")
 
 # COMMAND ----------
 
@@ -199,6 +242,16 @@ importance = pd.DataFrame(list(zip(df.columns, rf.feature_importances_)),
                             columns=["Feature", "Importance"]
                           ).sort_values("Importance", ascending=False)
 print(importance)
+
+# COMMAND ----------
+
+# DBTITLE 1,(for later use) Save the modified training data to a delta table
+(
+  spark.createDataFrame(pdDf).write
+  .format("delta")
+  .mode("overwrite")
+  .saveAsTable(name="lending_club.model_test", path="abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/model_test")
+)
 
 # COMMAND ----------
 

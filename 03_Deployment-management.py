@@ -93,10 +93,6 @@ predictions[:20]
 
 # COMMAND ----------
 
-spark.createDataFrame(pdDf).createOrReplaceTempView("model_test")
-
-# COMMAND ----------
-
 # DBTITLE 1,Retrieve model with mlflow.pyfunc.spark_udf and push into Spark pipeline
 import mlflow.pyfunc
 spark_model = mlflow.pyfunc.spark_udf(spark, model_uri=f"runs:/{best_run_id}/{model_name}")
@@ -104,31 +100,16 @@ spark_model
 
 # COMMAND ----------
 
-predictions_df = spark.table("model_test").withColumn("prediction", spark_model(*predictors))
+predictions_df = spark.table("lending_club.model_test").withColumn("prediction", spark_model(*predictors))
 display(predictions_df)
 
 # COMMAND ----------
 
 # DBTITLE 1,Use the model in a Spark Structured Streaming pipeline?
-# write our dataset out first to allow us to simulate streaming
-(
-  spark.table("model_test")
-  .repartition(200)
-  .write
-  .mode("overwrite")
-  .csv("abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/model_test/", header=True)
-)
-
-# COMMAND ----------
-
-model_test_schema = spark.table("model_test").schema
-
 streaming_df = (
   spark.readStream
-  .format("csv")
-  .schema(model_test_schema)
+  .format("delta")
   .option("maxFilesPerTrigger", 1)
-  .option("header", True)
   .load("abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/model_test/")
 )
 
@@ -150,7 +131,7 @@ spark.udf.register("debt_model", spark_model)
 # MAGIC   , emp_length, annual_inc, dti, 
 # MAGIC   delinq_2yrs, revol_util, total_acc
 # MAGIC   , credit_length_in_years, int_rate, net, issue_year) as prediction
-# MAGIC from model_test
+# MAGIC from lending_club.model_test
 
 # COMMAND ----------
 
@@ -184,7 +165,7 @@ client.search_model_versions(f"name='{model_name}'")
 
 current_prod_model = [mv.source for mv in client.search_model_versions(f"name='{model_name}'") if mv.current_stage == "Production"][0]
 spark_model = mlflow.pyfunc.spark_udf(spark, current_prod_model)
-predictions_df = spark.table("model_test").withColumn("prediction", spark_model(*predictors))
+predictions_df = spark.table("lending_club.model_test").withColumn("prediction", spark_model(*predictors))
 display(predictions_df)
 
 # COMMAND ----------

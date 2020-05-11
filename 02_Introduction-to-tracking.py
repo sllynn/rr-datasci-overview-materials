@@ -11,60 +11,14 @@
 # COMMAND ----------
 
 # DBTITLE 1,Import needed packages
-import os
-
 import pandas as pd
-import numpy as np
+from pyspark.sql.functions import *
 
 # COMMAND ----------
 
 # DBTITLE 1,Read dataset into Spark DataFrame
-source_data_path = "/databricks-datasets/samples/lending_club/parquet"
 table_name = "lending_club.cleaned"
-df = spark.read.format("parquet").load(source_data_path)
-
-# COMMAND ----------
-
-# DBTITLE 1,Clean data, engineer features (same as last example)
-from pyspark.sql.functions import *
-
-df = df.select("purpose", "loan_status", "int_rate", "revol_util", "issue_d", "earliest_cr_line", "emp_length", "verification_status", "total_pymnt", "loan_amnt", "grade", "annual_inc", "dti", "addr_state", "term", "home_ownership",  "application_type", "delinq_2yrs", "total_acc")
-
-print("------------------------------------------------------------------------------------------------")
-print("Create bad loan label, this will include charged off, defaulted, and late repayments on loans...")
-df = df.filter(df.loan_status.isin(["Default", "Charged Off", "Fully Paid"]))\
-                       .withColumn("bad_loan", (~(df.loan_status == "Fully Paid")).cast("string"))
-
-
-print("------------------------------------------------------------------------------------------------")
-print("Turning string interest rate and revoling util columns into numeric columns...")
-df = df.withColumn('int_rate', regexp_replace('int_rate', '%', '').cast('float')) \
-                       .withColumn('revol_util', regexp_replace('revol_util', '%', '').cast('float')) \
-                       .withColumn('issue_year',  substring(df.issue_d, 5, 4).cast('double') ) \
-                       .withColumn('earliest_year', substring(df.earliest_cr_line, 5, 4).cast('double'))
-df = df.withColumn('credit_length_in_years', (df.issue_year - df.earliest_year))
-
-
-print("------------------------------------------------------------------------------------------------")
-print("Converting emp_length column into numeric...")
-df = df.withColumn('emp_length', trim(regexp_replace(df.emp_length, "< 1", "0") ))
-df = df.withColumn('emp_length', trim(regexp_replace(df.emp_length, "10\\+", "10") ).cast('float'))
-
-print("------------------------------------------------------------------------------------------------")
-print("Map multiple levels into one factor level for verification_status...")
-df = df.withColumn('verification_status', trim(regexp_replace(df.verification_status, 'Source Verified', 'Verified')))
-
-print("------------------------------------------------------------------------------------------------")
-print("Calculate the total amount of money earned or lost per loan...")
-df = df.withColumn('net', round( df.total_pymnt - df.loan_amnt, 2))
-
-spark.sql("create database if not exists lending_club")
-(
-  df.write
-  .format("delta")
-  .mode("overwrite")
-  .saveAsTable(name="lending_club.cleaned", path="abfss://mldemo@shareddatalake.dfs.core.windows.net/lending_club/cleaned")
-)
+df = spark.table(table_name)
 
 # COMMAND ----------
 
